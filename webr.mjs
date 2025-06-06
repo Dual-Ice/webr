@@ -4,12 +4,14 @@ var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __typeError = (msg) => {
+  throw TypeError(msg);
+};
 var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require : typeof Proxy !== "undefined" ? new Proxy(x, {
   get: (a, b) => (typeof require !== "undefined" ? require : a)[b]
 }) : x)(function(x) {
-  if (typeof require !== "undefined")
-    return require.apply(this, arguments);
-  throw new Error('Dynamic require of "' + x + '" is not supported');
+  if (typeof require !== "undefined") return require.apply(this, arguments);
+  throw Error('Dynamic require of "' + x + '" is not supported');
 });
 var __commonJS = (cb, mod) => function __require2() {
   return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
@@ -30,36 +32,11 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
   mod
 ));
-var __accessCheck = (obj, member, msg) => {
-  if (!member.has(obj))
-    throw TypeError("Cannot " + msg);
-};
-var __privateGet = (obj, member, getter) => {
-  __accessCheck(obj, member, "read from private field");
-  return getter ? getter.call(obj) : member.get(obj);
-};
-var __privateAdd = (obj, member, value) => {
-  if (member.has(obj))
-    throw TypeError("Cannot add the same private member more than once");
-  member instanceof WeakSet ? member.add(obj) : member.set(obj, value);
-};
-var __privateSet = (obj, member, value, setter) => {
-  __accessCheck(obj, member, "write to private field");
-  setter ? setter.call(obj, value) : member.set(obj, value);
-  return value;
-};
-var __privateWrapper = (obj, member, setter, getter) => ({
-  set _(value) {
-    __privateSet(obj, member, value, setter);
-  },
-  get _() {
-    return __privateGet(obj, member, getter);
-  }
-});
-var __privateMethod = (obj, member, method) => {
-  __accessCheck(obj, member, "access private method");
-  return method;
-};
+var __accessCheck = (obj, member, msg) => member.has(obj) || __typeError("Cannot " + msg);
+var __privateGet = (obj, member, getter) => (__accessCheck(obj, member, "read from private field"), getter ? getter.call(obj) : member.get(obj));
+var __privateAdd = (obj, member, value) => member.has(obj) ? __typeError("Cannot add the same private member more than once") : member instanceof WeakSet ? member.add(obj) : member.set(obj, value);
+var __privateSet = (obj, member, value, setter) => (__accessCheck(obj, member, "write to private field"), setter ? setter.call(obj, value) : member.set(obj, value), value);
+var __privateMethod = (obj, member, method) => (__accessCheck(obj, member, "access private method"), method);
 
 // node_modules/@msgpack/msgpack/dist/utils/int.js
 var require_int = __commonJS({
@@ -256,15 +233,15 @@ var require_DecodeError = __commonJS({
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.DecodeError = void 0;
-    var DecodeError = class extends Error {
+    var DecodeError = class _DecodeError extends Error {
       constructor(message) {
         super(message);
-        const proto = Object.create(DecodeError.prototype);
+        const proto = Object.create(_DecodeError.prototype);
         Object.setPrototypeOf(this, proto);
         Object.defineProperty(this, "name", {
           configurable: true,
           enumerable: false,
-          value: DecodeError.name
+          value: _DecodeError.name
         });
       }
     };
@@ -382,14 +359,14 @@ var require_ExtensionCodec = __commonJS({
         this.decoders = [];
         this.register(timestamp_1.timestampExtension);
       }
-      register({ type, encode: encode3, decode: decode3 }) {
+      register({ type, encode: encode2, decode }) {
         if (type >= 0) {
-          this.encoders[type] = encode3;
-          this.decoders[type] = decode3;
+          this.encoders[type] = encode2;
+          this.decoders[type] = decode;
         } else {
           const index = 1 + type;
-          this.builtInEncoders[index] = encode3;
-          this.builtInDecoders[index] = decode3;
+          this.builtInEncoders[index] = encode2;
+          this.builtInDecoders[index] = decode;
         }
       }
       tryToEncode(object, context) {
@@ -804,11 +781,11 @@ var require_encode = __commonJS({
     exports.encode = void 0;
     var Encoder_1 = require_Encoder();
     var defaultEncodeOptions = {};
-    function encode3(value, options = defaultEncodeOptions) {
+    function encode2(value, options = defaultEncodeOptions) {
       const encoder2 = new Encoder_1.Encoder(options.extensionCodec, options.context, options.maxDepth, options.initialBufferSize, options.sortKeys, options.forceFloat32, options.ignoreUndefined, options.forceIntegerToFloat);
       return encoder2.encodeSharedRef(value);
     }
-    exports.encode = encode3;
+    exports.encode = encode2;
   }
 });
 
@@ -850,16 +827,15 @@ var require_CachedKeyDecoder = __commonJS({
       }
       find(bytes, inputOffset, byteLength) {
         const records = this.caches[byteLength - 1];
-        FIND_CHUNK:
-          for (const record of records) {
-            const recordBytes = record.bytes;
-            for (let j = 0; j < byteLength; j++) {
-              if (recordBytes[j] !== bytes[inputOffset + j]) {
-                continue FIND_CHUNK;
-              }
+        FIND_CHUNK: for (const record of records) {
+          const recordBytes = record.bytes;
+          for (let j = 0; j < byteLength; j++) {
+            if (recordBytes[j] !== bytes[inputOffset + j]) {
+              continue FIND_CHUNK;
             }
-            return record.str;
           }
+          return record.str;
+        }
         return null;
       }
       store(bytes, value) {
@@ -1046,92 +1022,16 @@ var require_Decoder = __commonJS({
         }
       }
       doDecodeSync() {
-        DECODE:
-          while (true) {
-            const headByte = this.readHeadByte();
-            let object;
-            if (headByte >= 224) {
-              object = headByte - 256;
-            } else if (headByte < 192) {
-              if (headByte < 128) {
-                object = headByte;
-              } else if (headByte < 144) {
-                const size = headByte - 128;
-                if (size !== 0) {
-                  this.pushMapState(size);
-                  this.complete();
-                  continue DECODE;
-                } else {
-                  object = {};
-                }
-              } else if (headByte < 160) {
-                const size = headByte - 144;
-                if (size !== 0) {
-                  this.pushArrayState(size);
-                  this.complete();
-                  continue DECODE;
-                } else {
-                  object = [];
-                }
-              } else {
-                const byteLength = headByte - 160;
-                object = this.decodeUtf8String(byteLength, 0);
-              }
-            } else if (headByte === 192) {
-              object = null;
-            } else if (headByte === 194) {
-              object = false;
-            } else if (headByte === 195) {
-              object = true;
-            } else if (headByte === 202) {
-              object = this.readF32();
-            } else if (headByte === 203) {
-              object = this.readF64();
-            } else if (headByte === 204) {
-              object = this.readU8();
-            } else if (headByte === 205) {
-              object = this.readU16();
-            } else if (headByte === 206) {
-              object = this.readU32();
-            } else if (headByte === 207) {
-              object = this.readU64();
-            } else if (headByte === 208) {
-              object = this.readI8();
-            } else if (headByte === 209) {
-              object = this.readI16();
-            } else if (headByte === 210) {
-              object = this.readI32();
-            } else if (headByte === 211) {
-              object = this.readI64();
-            } else if (headByte === 217) {
-              const byteLength = this.lookU8();
-              object = this.decodeUtf8String(byteLength, 1);
-            } else if (headByte === 218) {
-              const byteLength = this.lookU16();
-              object = this.decodeUtf8String(byteLength, 2);
-            } else if (headByte === 219) {
-              const byteLength = this.lookU32();
-              object = this.decodeUtf8String(byteLength, 4);
-            } else if (headByte === 220) {
-              const size = this.readU16();
-              if (size !== 0) {
-                this.pushArrayState(size);
-                this.complete();
-                continue DECODE;
-              } else {
-                object = [];
-              }
-            } else if (headByte === 221) {
-              const size = this.readU32();
-              if (size !== 0) {
-                this.pushArrayState(size);
-                this.complete();
-                continue DECODE;
-              } else {
-                object = [];
-              }
-            } else if (headByte === 222) {
-              const size = this.readU16();
+        DECODE: while (true) {
+          const headByte = this.readHeadByte();
+          let object;
+          if (headByte >= 224) {
+            object = headByte - 256;
+          } else if (headByte < 192) {
+            if (headByte < 128) {
+              object = headByte;
+            } else if (headByte < 144) {
+              const size = headByte - 128;
               if (size !== 0) {
                 this.pushMapState(size);
                 this.complete();
@@ -1139,84 +1039,159 @@ var require_Decoder = __commonJS({
               } else {
                 object = {};
               }
-            } else if (headByte === 223) {
-              const size = this.readU32();
+            } else if (headByte < 160) {
+              const size = headByte - 144;
               if (size !== 0) {
-                this.pushMapState(size);
+                this.pushArrayState(size);
                 this.complete();
                 continue DECODE;
               } else {
-                object = {};
+                object = [];
               }
-            } else if (headByte === 196) {
-              const size = this.lookU8();
-              object = this.decodeBinary(size, 1);
-            } else if (headByte === 197) {
-              const size = this.lookU16();
-              object = this.decodeBinary(size, 2);
-            } else if (headByte === 198) {
-              const size = this.lookU32();
-              object = this.decodeBinary(size, 4);
-            } else if (headByte === 212) {
-              object = this.decodeExtension(1, 0);
-            } else if (headByte === 213) {
-              object = this.decodeExtension(2, 0);
-            } else if (headByte === 214) {
-              object = this.decodeExtension(4, 0);
-            } else if (headByte === 215) {
-              object = this.decodeExtension(8, 0);
-            } else if (headByte === 216) {
-              object = this.decodeExtension(16, 0);
-            } else if (headByte === 199) {
-              const size = this.lookU8();
-              object = this.decodeExtension(size, 1);
-            } else if (headByte === 200) {
-              const size = this.lookU16();
-              object = this.decodeExtension(size, 2);
-            } else if (headByte === 201) {
-              const size = this.lookU32();
-              object = this.decodeExtension(size, 4);
             } else {
-              throw new DecodeError_1.DecodeError(`Unrecognized type byte: ${(0, prettyByte_1.prettyByte)(headByte)}`);
+              const byteLength = headByte - 160;
+              object = this.decodeUtf8String(byteLength, 0);
             }
-            this.complete();
-            const stack = this.stack;
-            while (stack.length > 0) {
-              const state = stack[stack.length - 1];
-              if (state.type === 0) {
-                state.array[state.position] = object;
-                state.position++;
-                if (state.position === state.size) {
-                  stack.pop();
-                  object = state.array;
-                } else {
-                  continue DECODE;
-                }
-              } else if (state.type === 1) {
-                if (!isValidMapKeyType(object)) {
-                  throw new DecodeError_1.DecodeError("The type of key must be string or number but " + typeof object);
-                }
-                if (object === "__proto__") {
-                  throw new DecodeError_1.DecodeError("The key __proto__ is not allowed");
-                }
-                state.key = object;
-                state.type = 2;
-                continue DECODE;
+          } else if (headByte === 192) {
+            object = null;
+          } else if (headByte === 194) {
+            object = false;
+          } else if (headByte === 195) {
+            object = true;
+          } else if (headByte === 202) {
+            object = this.readF32();
+          } else if (headByte === 203) {
+            object = this.readF64();
+          } else if (headByte === 204) {
+            object = this.readU8();
+          } else if (headByte === 205) {
+            object = this.readU16();
+          } else if (headByte === 206) {
+            object = this.readU32();
+          } else if (headByte === 207) {
+            object = this.readU64();
+          } else if (headByte === 208) {
+            object = this.readI8();
+          } else if (headByte === 209) {
+            object = this.readI16();
+          } else if (headByte === 210) {
+            object = this.readI32();
+          } else if (headByte === 211) {
+            object = this.readI64();
+          } else if (headByte === 217) {
+            const byteLength = this.lookU8();
+            object = this.decodeUtf8String(byteLength, 1);
+          } else if (headByte === 218) {
+            const byteLength = this.lookU16();
+            object = this.decodeUtf8String(byteLength, 2);
+          } else if (headByte === 219) {
+            const byteLength = this.lookU32();
+            object = this.decodeUtf8String(byteLength, 4);
+          } else if (headByte === 220) {
+            const size = this.readU16();
+            if (size !== 0) {
+              this.pushArrayState(size);
+              this.complete();
+              continue DECODE;
+            } else {
+              object = [];
+            }
+          } else if (headByte === 221) {
+            const size = this.readU32();
+            if (size !== 0) {
+              this.pushArrayState(size);
+              this.complete();
+              continue DECODE;
+            } else {
+              object = [];
+            }
+          } else if (headByte === 222) {
+            const size = this.readU16();
+            if (size !== 0) {
+              this.pushMapState(size);
+              this.complete();
+              continue DECODE;
+            } else {
+              object = {};
+            }
+          } else if (headByte === 223) {
+            const size = this.readU32();
+            if (size !== 0) {
+              this.pushMapState(size);
+              this.complete();
+              continue DECODE;
+            } else {
+              object = {};
+            }
+          } else if (headByte === 196) {
+            const size = this.lookU8();
+            object = this.decodeBinary(size, 1);
+          } else if (headByte === 197) {
+            const size = this.lookU16();
+            object = this.decodeBinary(size, 2);
+          } else if (headByte === 198) {
+            const size = this.lookU32();
+            object = this.decodeBinary(size, 4);
+          } else if (headByte === 212) {
+            object = this.decodeExtension(1, 0);
+          } else if (headByte === 213) {
+            object = this.decodeExtension(2, 0);
+          } else if (headByte === 214) {
+            object = this.decodeExtension(4, 0);
+          } else if (headByte === 215) {
+            object = this.decodeExtension(8, 0);
+          } else if (headByte === 216) {
+            object = this.decodeExtension(16, 0);
+          } else if (headByte === 199) {
+            const size = this.lookU8();
+            object = this.decodeExtension(size, 1);
+          } else if (headByte === 200) {
+            const size = this.lookU16();
+            object = this.decodeExtension(size, 2);
+          } else if (headByte === 201) {
+            const size = this.lookU32();
+            object = this.decodeExtension(size, 4);
+          } else {
+            throw new DecodeError_1.DecodeError(`Unrecognized type byte: ${(0, prettyByte_1.prettyByte)(headByte)}`);
+          }
+          this.complete();
+          const stack = this.stack;
+          while (stack.length > 0) {
+            const state = stack[stack.length - 1];
+            if (state.type === 0) {
+              state.array[state.position] = object;
+              state.position++;
+              if (state.position === state.size) {
+                stack.pop();
+                object = state.array;
               } else {
-                state.map[state.key] = object;
-                state.readCount++;
-                if (state.readCount === state.size) {
-                  stack.pop();
-                  object = state.map;
-                } else {
-                  state.key = null;
-                  state.type = 1;
-                  continue DECODE;
-                }
+                continue DECODE;
+              }
+            } else if (state.type === 1) {
+              if (!isValidMapKeyType(object)) {
+                throw new DecodeError_1.DecodeError("The type of key must be string or number but " + typeof object);
+              }
+              if (object === "__proto__") {
+                throw new DecodeError_1.DecodeError("The key __proto__ is not allowed");
+              }
+              state.key = object;
+              state.type = 2;
+              continue DECODE;
+            } else {
+              state.map[state.key] = object;
+              state.readCount++;
+              if (state.readCount === state.size) {
+                stack.pop();
+                object = state.map;
+              } else {
+                state.key = null;
+                state.type = 1;
+                continue DECODE;
               }
             }
-            return object;
           }
+          return object;
+        }
       }
       readHeadByte() {
         if (this.headByte === HEAD_BYTE_REQUIRED) {
@@ -1389,11 +1364,11 @@ var require_decode = __commonJS({
     exports.decodeMulti = exports.decode = exports.defaultDecodeOptions = void 0;
     var Decoder_1 = require_Decoder();
     exports.defaultDecodeOptions = {};
-    function decode3(buffer, options = exports.defaultDecodeOptions) {
+    function decode(buffer, options = exports.defaultDecodeOptions) {
       const decoder2 = new Decoder_1.Decoder(options.extensionCodec, options.context, options.maxStrLength, options.maxBinLength, options.maxArrayLength, options.maxMapLength, options.maxExtLength);
       return decoder2.decode(buffer);
     }
-    exports.decode = decode3;
+    exports.decode = decode;
     function decodeMulti(buffer, options = exports.defaultDecodeOptions) {
       const decoder2 = new Decoder_1.Decoder(options.extensionCodec, options.context, options.maxStrLength, options.maxBinLength, options.maxArrayLength, options.maxMapLength, options.maxExtLength);
       return decoder2.decodeMulti(buffer);
@@ -1695,7 +1670,6 @@ function safeEval(call, env) {
 }
 
 // webR/chan/task-common.ts
-var SZ_BUF_DOESNT_FIT = 0;
 var SZ_BUF_FITS_IDX = 1;
 var SZ_BUF_SIZE_IDX = 0;
 var transferCache = /* @__PURE__ */ new WeakMap();
@@ -1816,14 +1790,14 @@ var RObjectBase = class {
     return type;
   }
 };
-var _slice, slice_fn;
-var _RObject = class extends RObjectBase {
+var _RObject_instances, slice_fn;
+var _RObject = class _RObject extends RObjectBase {
   constructor(data) {
     if (!(data instanceof RObjectBase)) {
       return newObjectFromData(data);
     }
     super(data.ptr);
-    __privateAdd(this, _slice);
+    __privateAdd(this, _RObject_instances);
   }
   static wrap(ptr) {
     const typeNumber = Module2._TYPEOF(ptr);
@@ -1901,13 +1875,13 @@ var _RObject = class extends RObjectBase {
     throw new Error("This R object cannot be converted to JS");
   }
   subset(prop) {
-    return __privateMethod(this, _slice, slice_fn).call(this, prop, objs.bracketSymbol.ptr);
+    return __privateMethod(this, _RObject_instances, slice_fn).call(this, prop, objs.bracketSymbol.ptr);
   }
   get(prop) {
-    return __privateMethod(this, _slice, slice_fn).call(this, prop, objs.bracket2Symbol.ptr);
+    return __privateMethod(this, _RObject_instances, slice_fn).call(this, prop, objs.bracket2Symbol.ptr);
   }
   getDollar(prop) {
-    return __privateMethod(this, _slice, slice_fn).call(this, prop, objs.dollarSymbol.ptr);
+    return __privateMethod(this, _RObject_instances, slice_fn).call(this, prop, objs.dollarSymbol.ptr);
   }
   pluck(...path) {
     const index = protectWithIndex(objs.null);
@@ -1947,8 +1921,7 @@ var _RObject = class extends RObjectBase {
     return [...props.keys()].filter((i) => typeof obj[i] === "function");
   }
 };
-var RObject = _RObject;
-_slice = new WeakSet();
+_RObject_instances = new WeakSet();
 slice_fn = function(prop, op) {
   const prot = { n: 0 };
   try {
@@ -1961,6 +1934,7 @@ slice_fn = function(prop, op) {
     unprotect(prot.n);
   }
 };
+var RObject = _RObject;
 var RNull = class extends RObject {
   constructor() {
     super(new RObjectBase(Module2.getValue(Module2._R_NilValue, "*")));
@@ -2016,7 +1990,7 @@ var RSymbol = class extends RObject {
     return RObject.wrap(Module2._INTERNAL(this.ptr));
   }
 };
-var RPairlist = class extends RObject {
+var RPairlist = class _RPairlist extends RObject {
   constructor(val) {
     if (val instanceof RObjectBase) {
       assertRType(val, "pairlist");
@@ -2026,7 +2000,7 @@ var RPairlist = class extends RObject {
     const prot = { n: 0 };
     try {
       const { names, values } = toWebRData(val);
-      const list = RPairlist.wrap(Module2._Rf_allocList(values.length));
+      const list = _RPairlist.wrap(Module2._Rf_allocList(values.length));
       protectInc(list, prot);
       for (let [i, next] = [0, list]; !next.isNull(); [i, next] = [i + 1, next.cdr()]) {
         next.setcar(new RObject(values[i]));
@@ -2101,7 +2075,7 @@ var RPairlist = class extends RObject {
     return RObject.wrap(Module2._TAG(this.ptr));
   }
 };
-var RCall = class extends RObject {
+var RCall = class _RCall extends RObject {
   constructor(val) {
     if (val instanceof RObjectBase) {
       assertRType(val, "call");
@@ -2112,7 +2086,7 @@ var RCall = class extends RObject {
     try {
       const { values } = toWebRData(val);
       const objs2 = values.map((value) => protectInc(new RObject(value), prot));
-      const call = RCall.wrap(Module2._Rf_allocVector(RTypeMap.call, values.length));
+      const call = _RCall.wrap(Module2._Rf_allocVector(RTypeMap.call, values.length));
       protectInc(call, prot);
       for (let [i, next] = [0, call]; !next.isNull(); [i, next] = [i + 1, next.cdr()]) {
         next.setcar(objs2[i]);
@@ -2153,7 +2127,7 @@ var RCall = class extends RObject {
     }
   }
 };
-var RList = class extends RObject {
+var RList = class _RList extends RObject {
   constructor(val, names = null) {
     if (val instanceof RObjectBase) {
       assertRType(val, "list");
@@ -2175,7 +2149,7 @@ var RList = class extends RObject {
       protectInc(ptr, prot);
       data.values.forEach((v, i) => {
         if (isSimpleObject(v)) {
-          Module2._SET_VECTOR_ELT(ptr, i, new RList(v).ptr);
+          Module2._SET_VECTOR_ELT(ptr, i, new _RList(v).ptr);
         } else {
           Module2._SET_VECTOR_ELT(ptr, i, new RObject(v).ptr);
         }
@@ -2252,7 +2226,7 @@ var RList = class extends RObject {
     };
   }
 };
-var RDataFrame = class extends RList {
+var RDataFrame = class _RDataFrame extends RList {
   constructor(val) {
     if (val instanceof RObjectBase) {
       super(val);
@@ -2261,7 +2235,7 @@ var RDataFrame = class extends RList {
       }
       return this;
     }
-    return RDataFrame.fromObject(val);
+    return _RDataFrame.fromObject(val);
   }
   static fromObject(obj) {
     const { names, values } = toWebRData(obj);
@@ -2286,7 +2260,7 @@ var RDataFrame = class extends RList {
           protectInc(listObj, prot);
           const asDataFrame = new RCall([new RSymbol("as.data.frame"), listObj]);
           protectInc(asDataFrame, prot);
-          return new RDataFrame(asDataFrame.eval());
+          return new _RDataFrame(asDataFrame.eval());
         }
       }
     } finally {
@@ -2322,7 +2296,7 @@ var RFunction = class extends RObject {
     }
   }
 };
-var RString = class extends RObject {
+var _RString = class _RString extends RObject {
   // Unlike symbols, strings are not cached and must thus be protected
   constructor(x) {
     if (x instanceof RObjectBase) {
@@ -2332,13 +2306,18 @@ var RString = class extends RObject {
     }
     const name = Module2.allocateUTF8(x);
     try {
-      super(new RObjectBase(Module2._Rf_mkChar(name)));
+      super(new RObjectBase(Module2._Rf_mkCharCE(name, _RString.CEType.CE_UTF8)));
     } finally {
       Module2._free(name);
     }
   }
   toString() {
-    return Module2.UTF8ToString(Module2._R_CHAR(this.ptr));
+    const vmax = Module2._vmaxget();
+    try {
+      return Module2.UTF8ToString(Module2._Rf_translateCharUTF8(this.ptr));
+    } finally {
+      Module2._vmaxset(vmax);
+    }
   }
   toJs() {
     return {
@@ -2347,6 +2326,15 @@ var RString = class extends RObject {
     };
   }
 };
+_RString.CEType = {
+  CE_NATIVE: 0,
+  CE_UTF8: 1,
+  CE_LATIN1: 2,
+  CE_BYTES: 3,
+  CE_SYMBOL: 5,
+  CE_ANY: 99
+};
+var RString = _RString;
 var REnvironment = class extends RObject {
   constructor(val = {}) {
     if (val instanceof RObjectBase) {
@@ -2506,7 +2494,7 @@ var RVectorAtomic = class extends RObject {
   }
 };
 var _newSetter;
-var _RLogical = class extends RVectorAtomic {
+var _RLogical = class _RLogical extends RVectorAtomic {
   constructor(val) {
     super(val, "logical", __privateGet(_RLogical, _newSetter));
   }
@@ -2536,17 +2524,17 @@ var _RLogical = class extends RVectorAtomic {
     return this.detectMissing().map((m, idx) => m ? null : Boolean(arr[idx]));
   }
 };
-var RLogical = _RLogical;
 _newSetter = new WeakMap();
-__privateAdd(RLogical, _newSetter, (ptr) => {
+__privateAdd(_RLogical, _newSetter, (ptr) => {
   const data = Module2._LOGICAL(ptr);
   const naLogical = Module2.getValue(Module2._R_NaInt, "i32");
   return (v, i) => {
     Module2.setValue(data + 4 * i, v === null ? naLogical : Boolean(v), "i32");
   };
 });
+var RLogical = _RLogical;
 var _newSetter2;
-var _RInteger = class extends RVectorAtomic {
+var _RInteger = class _RInteger extends RVectorAtomic {
   constructor(val) {
     super(val, "integer", __privateGet(_RInteger, _newSetter2));
   }
@@ -2572,17 +2560,17 @@ var _RInteger = class extends RVectorAtomic {
     );
   }
 };
-var RInteger = _RInteger;
 _newSetter2 = new WeakMap();
-__privateAdd(RInteger, _newSetter2, (ptr) => {
+__privateAdd(_RInteger, _newSetter2, (ptr) => {
   const data = Module2._INTEGER(ptr);
   const naInteger = Module2.getValue(Module2._R_NaInt, "i32");
   return (v, i) => {
     Module2.setValue(data + 4 * i, v === null ? naInteger : Math.round(Number(v)), "i32");
   };
 });
+var RInteger = _RInteger;
 var _newSetter3;
-var _RDouble = class extends RVectorAtomic {
+var _RDouble = class _RDouble extends RVectorAtomic {
   constructor(val) {
     super(val, "double", __privateGet(_RDouble, _newSetter3));
   }
@@ -2605,17 +2593,17 @@ var _RDouble = class extends RVectorAtomic {
     );
   }
 };
-var RDouble = _RDouble;
 _newSetter3 = new WeakMap();
-__privateAdd(RDouble, _newSetter3, (ptr) => {
+__privateAdd(_RDouble, _newSetter3, (ptr) => {
   const data = Module2._REAL(ptr);
   const naDouble = Module2.getValue(Module2._R_NaReal, "double");
   return (v, i) => {
     Module2.setValue(data + 8 * i, v === null ? naDouble : v, "double");
   };
 });
+var RDouble = _RDouble;
 var _newSetter4;
-var _RComplex = class extends RVectorAtomic {
+var _RComplex = class _RComplex extends RVectorAtomic {
   constructor(val) {
     super(val, "complex", __privateGet(_RComplex, _newSetter4));
   }
@@ -2647,9 +2635,8 @@ var _RComplex = class extends RVectorAtomic {
     );
   }
 };
-var RComplex = _RComplex;
 _newSetter4 = new WeakMap();
-__privateAdd(RComplex, _newSetter4, (ptr) => {
+__privateAdd(_RComplex, _newSetter4, (ptr) => {
   const data = Module2._COMPLEX(ptr);
   const naDouble = Module2.getValue(Module2._R_NaReal, "double");
   return (v, i) => {
@@ -2657,8 +2644,9 @@ __privateAdd(RComplex, _newSetter4, (ptr) => {
     Module2.setValue(data + 8 * (2 * i + 1), v === null ? naDouble : v.im, "double");
   };
 });
+var RComplex = _RComplex;
 var _newSetter5;
-var _RCharacter = class extends RVectorAtomic {
+var _RCharacter = class _RCharacter extends RVectorAtomic {
   constructor(val) {
     super(val, "character", __privateGet(_RCharacter, _newSetter5));
   }
@@ -2684,14 +2672,20 @@ var _RCharacter = class extends RVectorAtomic {
     );
   }
   toArray() {
-    return this.detectMissing().map(
-      (m, idx) => m ? null : Module2.UTF8ToString(Module2._R_CHAR(Module2._STRING_ELT(this.ptr, idx)))
-    );
+    const vmax = Module2._vmaxget();
+    try {
+      return this.detectMissing().map(
+        (m, idx) => m ? null : Module2.UTF8ToString(
+          Module2._Rf_translateCharUTF8(Module2._STRING_ELT(this.ptr, idx))
+        )
+      );
+    } finally {
+      Module2._vmaxset(vmax);
+    }
   }
 };
-var RCharacter = _RCharacter;
 _newSetter5 = new WeakMap();
-__privateAdd(RCharacter, _newSetter5, (ptr) => {
+__privateAdd(_RCharacter, _newSetter5, (ptr) => {
   return (v, i) => {
     if (v === null) {
       Module2._SET_STRING_ELT(ptr, i, objs.naString.ptr);
@@ -2700,8 +2694,9 @@ __privateAdd(RCharacter, _newSetter5, (ptr) => {
     }
   };
 });
+var RCharacter = _RCharacter;
 var _newSetter6;
-var _RRaw = class extends RVectorAtomic {
+var _RRaw = class _RRaw extends RVectorAtomic {
   constructor(val) {
     if (val instanceof ArrayBuffer) {
       val = new Uint8Array(val);
@@ -2727,14 +2722,14 @@ var _RRaw = class extends RVectorAtomic {
     );
   }
 };
-var RRaw = _RRaw;
 _newSetter6 = new WeakMap();
-__privateAdd(RRaw, _newSetter6, (ptr) => {
+__privateAdd(_RRaw, _newSetter6, (ptr) => {
   const data = Module2._RAW(ptr);
   return (v, i) => {
     Module2.setValue(data + i, Number(v), "i8");
   };
 });
+var RRaw = _RRaw;
 function toWebRData(jsObj) {
   if (isWebRDataJs(jsObj)) {
     return jsObj;
@@ -2833,18 +2828,40 @@ function replaceInObject(obj, test, replacer, ...replacerArgs) {
   }
   return obj;
 }
-function newCrossOriginWorker(url, cb) {
+function newCrossOriginWorker(url, cb, onError) {
   const req = new XMLHttpRequest();
   req.open("get", url, true);
   req.onload = () => {
-    const worker = new Worker(URL.createObjectURL(new Blob([req.responseText])));
-    cb(worker);
+    if (req.status >= 200 && req.status < 300) {
+      try {
+        const worker = new Worker(URL.createObjectURL(new Blob([req.responseText])));
+        cb(worker);
+      } catch (error) {
+        if (onError) {
+          onError(error instanceof Error ? error : new Error(String(error)));
+        } else {
+          throw error;
+        }
+      }
+    } else {
+      if (onError) {
+        onError(new Error(`Worker loading error: HTTP ${req.status}`));
+      } else {
+        console.error(`HTTP Error: ${req.status}`);
+      }
+    }
+  };
+  req.onerror = () => {
+    if (onError) {
+      onError(new Error(`Network error loading ${url}`));
+    } else {
+      console.error(`Network error loading ${url}`);
+    }
   };
   req.send();
 }
 function isCrossOrigin(urlString) {
-  if (IN_NODE)
-    return false;
+  if (IN_NODE) return false;
   const url1 = new URL(location.href);
   const url2 = new URL(urlString, location.origin);
   if (url1.host === url2.host && url1.port === url2.port && url1.protocol === url2.protocol) {
@@ -2923,12 +2940,12 @@ async function signalRequester(signalBuffer, taskId) {
 }
 
 // webR/chan/queue.ts
-var _promises, _resolvers, _add, add_fn;
+var _promises, _resolvers, _AsyncQueue_instances, add_fn;
 var AsyncQueue = class {
   constructor() {
-    __privateAdd(this, _add);
-    __privateAdd(this, _promises, void 0);
-    __privateAdd(this, _resolvers, void 0);
+    __privateAdd(this, _AsyncQueue_instances);
+    __privateAdd(this, _promises);
+    __privateAdd(this, _resolvers);
     __privateSet(this, _resolvers, []);
     __privateSet(this, _promises, []);
   }
@@ -2938,14 +2955,14 @@ var AsyncQueue = class {
   }
   put(t) {
     if (!__privateGet(this, _resolvers).length) {
-      __privateMethod(this, _add, add_fn).call(this);
+      __privateMethod(this, _AsyncQueue_instances, add_fn).call(this);
     }
     const resolve = __privateGet(this, _resolvers).shift();
     resolve(t);
   }
   async get() {
     if (!__privateGet(this, _promises).length) {
-      __privateMethod(this, _add, add_fn).call(this);
+      __privateMethod(this, _AsyncQueue_instances, add_fn).call(this);
     }
     const promise = __privateGet(this, _promises).shift();
     return promise;
@@ -2962,7 +2979,7 @@ var AsyncQueue = class {
 };
 _promises = new WeakMap();
 _resolvers = new WeakMap();
-_add = new WeakSet();
+_AsyncQueue_instances = new WeakSet();
 add_fn = function() {
   __privateGet(this, _promises).push(
     new Promise((resolve) => {
@@ -3002,17 +3019,13 @@ function newRequestResponseMessage(msg, transferables) {
   }
   return msg;
 }
-function newSyncRequest(msg, data) {
-  return {
-    type: "sync-request",
-    data: { msg, reqData: data }
-  };
-}
 
 // webR/payload.ts
 function webRPayloadAsError(payload) {
   const e = new WebRWorkerError(payload.obj.message);
-  if (payload.obj.name !== "Error") {
+  if (payload.obj.name == "ErrnoError") {
+    e.message = `ErrnoError: ${String(payload.obj.errno)}`;
+  } else if (payload.obj.name !== "Error") {
     e.name = payload.obj.name;
   }
   e.stack = payload.obj.stack;
@@ -3085,194 +3098,19 @@ _parked = new WeakMap();
 _closed = new WeakMap();
 
 // webR/chan/task-worker.ts
-var import_msgpack2 = __toESM(require_dist());
 var decoder = new TextDecoder("utf-8");
-var _scheduled, _resolved, _result, _exception, _syncGen;
-var SyncTask = class {
-  constructor(endpoint, msg, transfers = []) {
-    __privateAdd(this, _scheduled, false);
-    __privateAdd(this, _resolved, void 0);
-    __privateAdd(this, _result, void 0);
-    __privateAdd(this, _exception, void 0);
-    __privateAdd(this, _syncGen, void 0);
-    this.syncifier = new _Syncifier();
-    this.endpoint = endpoint;
-    this.msg = msg;
-    this.transfers = transfers;
-    __privateSet(this, _resolved, false);
-  }
-  scheduleSync() {
-    if (__privateGet(this, _scheduled)) {
-      return;
-    }
-    __privateSet(this, _scheduled, true);
-    this.syncifier.scheduleTask(this);
-    __privateSet(this, _syncGen, this.doSync());
-    __privateGet(this, _syncGen).next();
-    return this;
-  }
-  poll() {
-    if (!__privateGet(this, _scheduled)) {
-      throw new Error("Task not synchronously scheduled");
-    }
-    const { done, value } = __privateGet(this, _syncGen).next();
-    if (!done) {
-      return false;
-    }
-    __privateSet(this, _resolved, true);
-    __privateSet(this, _result, value);
-    return true;
-  }
-  *doSync() {
-    const { endpoint, msg, transfers } = this;
-    const sizeBuffer = new Int32Array(new SharedArrayBuffer(8));
-    const signalBuffer = this.signalBuffer;
-    const taskId = this.taskId;
-    let dataBuffer = acquireDataBuffer(UUID_LENGTH);
-    const syncMsg = newSyncRequest(msg, {
-      sizeBuffer,
-      dataBuffer,
-      signalBuffer,
-      taskId
-    });
-    endpoint.postMessage(syncMsg, transfers);
-    yield;
-    if (Atomics.load(sizeBuffer, SZ_BUF_FITS_IDX) === SZ_BUF_DOESNT_FIT) {
-      const id = decoder.decode(dataBuffer.slice(0, UUID_LENGTH));
-      releaseDataBuffer(dataBuffer);
-      const size2 = Atomics.load(sizeBuffer, SZ_BUF_SIZE_IDX);
-      dataBuffer = acquireDataBuffer(size2);
-      endpoint.postMessage({ id, dataBuffer });
-      yield;
-    }
-    const size = Atomics.load(sizeBuffer, SZ_BUF_SIZE_IDX);
-    return (0, import_msgpack2.decode)(dataBuffer.slice(0, size));
-  }
-  get result() {
-    if (__privateGet(this, _exception)) {
-      throw __privateGet(this, _exception);
-    }
-    if (__privateGet(this, _resolved)) {
-      return __privateGet(this, _result);
-    }
-    throw new Error("Not ready.");
-  }
-  syncify() {
-    this.scheduleSync();
-    this.syncifier.syncifyTask(this);
-    return this.result;
-  }
-};
-_scheduled = new WeakMap();
-_resolved = new WeakMap();
-_result = new WeakMap();
-_exception = new WeakMap();
-_syncGen = new WeakMap();
-var _Syncifier = class {
-  constructor() {
-    this.nextTaskId = new Int32Array([1]);
-    this.signalBuffer = new Int32Array(new SharedArrayBuffer(32 * 4 + 4));
-    this.tasks = /* @__PURE__ */ new Map();
-  }
-  scheduleTask(task) {
-    task.taskId = this.nextTaskId[0];
-    this.nextTaskId[0] += 2;
-    task.signalBuffer = this.signalBuffer;
-    this.tasks.set(task.taskId, task);
-  }
-  waitOnSignalBuffer() {
-    const timeout = 50;
-    for (; ; ) {
-      const status = Atomics.wait(this.signalBuffer, 0, 0, timeout);
-      switch (status) {
-        case "ok":
-        case "not-equal":
-          return;
-        case "timed-out":
-          if (interruptBuffer[0] !== 0) {
-            handleInterrupt();
-          }
-          break;
-        default:
-          throw new Error("Unreachable");
-      }
-    }
-  }
-  *tasksIdsToWakeup() {
-    const flag = Atomics.load(this.signalBuffer, 0);
-    for (let i = 0; i < 32; i++) {
-      const bit = 1 << i;
-      if (flag & bit) {
-        Atomics.and(this.signalBuffer, 0, ~bit);
-        const wokenTask = Atomics.exchange(this.signalBuffer, i + 1, 0);
-        yield wokenTask;
-      }
-    }
-  }
-  pollTasks(task) {
-    let result = false;
-    for (const wokenTaskId of this.tasksIdsToWakeup()) {
-      const wokenTask = this.tasks.get(wokenTaskId);
-      if (!wokenTask) {
-        throw new Error(`Assertion error: unknown taskId ${wokenTaskId}.`);
-      }
-      if (wokenTask.poll()) {
-        this.tasks.delete(wokenTaskId);
-        if (wokenTask === task) {
-          result = true;
-        }
-      }
-    }
-    return result;
-  }
-  syncifyTask(task) {
-    for (; ; ) {
-      this.waitOnSignalBuffer();
-      if (this.pollTasks(task)) {
-        return;
-      }
-    }
-  }
-};
-var dataBuffers = [];
-function acquireDataBuffer(size) {
-  const powerof2 = Math.ceil(Math.log2(size));
-  if (!dataBuffers[powerof2]) {
-    dataBuffers[powerof2] = [];
-  }
-  const result = dataBuffers[powerof2].pop();
-  if (result) {
-    result.fill(0);
-    return result;
-  }
-  return new Uint8Array(new SharedArrayBuffer(2 ** powerof2));
-}
-function releaseDataBuffer(buffer) {
-  const powerof2 = Math.ceil(Math.log2(buffer.byteLength));
-  dataBuffers[powerof2].push(buffer);
-}
 var interruptBuffer = new Int32Array(new ArrayBuffer(4));
-var handleInterrupt = () => {
-  interruptBuffer[0] = 0;
-  throw new Error("Interrupted!");
-};
-function setInterruptHandler(handler) {
-  handleInterrupt = handler;
-}
-function setInterruptBuffer(buffer) {
-  interruptBuffer = new Int32Array(buffer);
-}
 
 // webR/chan/channel-shared.ts
 if (IN_NODE) {
   globalThis.Worker = __require("worker_threads").Worker;
 }
-var _interruptBuffer, _handleEventsFromWorker, handleEventsFromWorker_fn, _onMessageFromWorker;
+var _interruptBuffer, _SharedBufferChannelMain_instances, handleEventsFromWorker_fn, _onMessageFromWorker;
 var SharedBufferChannelMain = class extends ChannelMain {
   constructor(config) {
     super();
-    __privateAdd(this, _handleEventsFromWorker);
-    __privateAdd(this, _interruptBuffer, void 0);
+    __privateAdd(this, _SharedBufferChannelMain_instances);
+    __privateAdd(this, _interruptBuffer);
     this.close = () => {
       return;
     };
@@ -3317,7 +3155,7 @@ var SharedBufferChannelMain = class extends ChannelMain {
     });
     ({ resolve: this.resolve, reject: this.reject, promise: this.initialised } = promiseHandles());
     const initWorker = (worker) => {
-      __privateMethod(this, _handleEventsFromWorker, handleEventsFromWorker_fn).call(this, worker);
+      __privateMethod(this, _SharedBufferChannelMain_instances, handleEventsFromWorker_fn).call(this, worker);
       this.close = () => {
         worker.terminate();
         this.putClosedMessage();
@@ -3331,7 +3169,10 @@ var SharedBufferChannelMain = class extends ChannelMain {
     if (isCrossOrigin(config.baseUrl)) {
       newCrossOriginWorker(
         `${config.baseUrl}webr-worker.js`,
-        (worker) => initWorker(worker)
+        (worker) => initWorker(worker),
+        (error) => {
+          this.reject(new WebRWorkerError(`Worker loading error: ${error.message}`));
+        }
       );
     } else {
       const worker = new Worker(`${config.baseUrl}webr-worker.js`);
@@ -3347,7 +3188,7 @@ var SharedBufferChannelMain = class extends ChannelMain {
   }
 };
 _interruptBuffer = new WeakMap();
-_handleEventsFromWorker = new WeakSet();
+_SharedBufferChannelMain_instances = new WeakSet();
 handleEventsFromWorker_fn = function(worker) {
   if (IN_NODE) {
     worker.on("message", (message) => {
@@ -3370,95 +3211,21 @@ handleEventsFromWorker_fn = function(worker) {
   }
 };
 _onMessageFromWorker = new WeakMap();
-var _ep, _dispatch, _interruptBuffer2, _interrupt;
-var SharedBufferChannelWorker = class {
-  constructor() {
-    __privateAdd(this, _ep, void 0);
-    __privateAdd(this, _dispatch, () => 0);
-    __privateAdd(this, _interruptBuffer2, new Int32Array(new SharedArrayBuffer(4)));
-    __privateAdd(this, _interrupt, () => {
-      return;
-    });
-    this.onMessageFromMainThread = () => {
-      return;
-    };
-    __privateSet(this, _ep, IN_NODE ? __require("worker_threads").parentPort : globalThis);
-    setInterruptBuffer(__privateGet(this, _interruptBuffer2).buffer);
-    setInterruptHandler(() => this.handleInterrupt());
-  }
-  resolve() {
-    this.write({ type: "resolve", data: __privateGet(this, _interruptBuffer2).buffer });
-  }
-  write(msg, transfer2) {
-    __privateGet(this, _ep).postMessage(msg, transfer2);
-  }
-  writeSystem(msg, transfer2) {
-    __privateGet(this, _ep).postMessage({ type: "system", data: msg }, transfer2);
-  }
-  read() {
-    const msg = { type: "read" };
-    const task = new SyncTask(__privateGet(this, _ep), msg);
-    return task.syncify();
-  }
-  inputOrDispatch() {
-    for (; ; ) {
-      const msg = this.read();
-      if (msg.type === "stdin") {
-        return Module2.allocateUTF8(msg.data);
-      }
-      __privateGet(this, _dispatch).call(this, msg);
-    }
-  }
-  run(args) {
-    try {
-      Module2.callMain(args);
-    } catch (e) {
-      if (e instanceof WebAssembly.RuntimeError) {
-        this.writeSystem({ type: "console.error", data: e.message });
-        this.writeSystem({
-          type: "console.error",
-          data: "An unrecoverable WebAssembly error has occurred, the webR worker will be closed."
-        });
-        this.writeSystem({ type: "close" });
-      }
-      throw e;
-    }
-  }
-  setInterrupt(interrupt) {
-    __privateSet(this, _interrupt, interrupt);
-  }
-  handleInterrupt() {
-    if (__privateGet(this, _interruptBuffer2)[0] !== 0) {
-      __privateGet(this, _interruptBuffer2)[0] = 0;
-      __privateGet(this, _interrupt).call(this);
-    }
-  }
-  setDispatchHandler(dispatch) {
-    __privateSet(this, _dispatch, dispatch);
-  }
-};
-_ep = new WeakMap();
-_dispatch = new WeakMap();
-_interruptBuffer2 = new WeakMap();
-_interrupt = new WeakMap();
 
 // webR/chan/channel-service.ts
-var import_msgpack3 = __toESM(require_dist());
 if (IN_NODE) {
   globalThis.Worker = __require("worker_threads").Worker;
 }
-var _syncMessageCache, _registration, _interrupted, _registerServiceWorker, registerServiceWorker_fn, _onMessageFromServiceWorker, onMessageFromServiceWorker_fn, _handleEventsFromWorker2, handleEventsFromWorker_fn2, _onMessageFromWorker2;
+var _syncMessageCache, _registration, _interrupted, _ServiceWorkerChannelMain_instances, registerServiceWorker_fn, onMessageFromServiceWorker_fn, handleEventsFromWorker_fn2, _onMessageFromWorker2;
 var ServiceWorkerChannelMain = class extends ChannelMain {
   constructor(config) {
     super();
-    __privateAdd(this, _registerServiceWorker);
-    __privateAdd(this, _onMessageFromServiceWorker);
-    __privateAdd(this, _handleEventsFromWorker2);
+    __privateAdd(this, _ServiceWorkerChannelMain_instances);
     this.close = () => {
       return;
     };
     __privateAdd(this, _syncMessageCache, /* @__PURE__ */ new Map());
-    __privateAdd(this, _registration, void 0);
+    __privateAdd(this, _registration);
     __privateAdd(this, _interrupted, false);
     __privateAdd(this, _onMessageFromWorker2, (worker, message) => {
       if (!message || !message.type) {
@@ -3493,12 +3260,12 @@ var ServiceWorkerChannelMain = class extends ChannelMain {
       "The ServiceWorker communication channel is deprecated and will be removed in a future version of webR. Consider using the PostMessage channel instead. If blocking input is required (for example, `browser()`) the SharedArrayBuffer channel should be used. See https://docs.r-wasm.org/webr/latest/serving.html for further information."
     );
     const initWorker = (worker) => {
-      __privateMethod(this, _handleEventsFromWorker2, handleEventsFromWorker_fn2).call(this, worker);
+      __privateMethod(this, _ServiceWorkerChannelMain_instances, handleEventsFromWorker_fn2).call(this, worker);
       this.close = () => {
         worker.terminate();
         this.putClosedMessage();
       };
-      void __privateMethod(this, _registerServiceWorker, registerServiceWorker_fn).call(this, `${config.serviceWorkerUrl}webr-serviceworker.js`).then(
+      void __privateMethod(this, _ServiceWorkerChannelMain_instances, registerServiceWorker_fn).call(this, `${config.serviceWorkerUrl}webr-serviceworker.js`).then(
         (clientId) => {
           const msg = {
             type: "init",
@@ -3515,8 +3282,11 @@ var ServiceWorkerChannelMain = class extends ChannelMain {
     };
     if (isCrossOrigin(config.serviceWorkerUrl)) {
       newCrossOriginWorker(
-        `${config.serviceWorkerUrl}webr-worker.js`,
-        (worker) => initWorker(worker)
+        `${config.baseUrl}webr-worker.js`,
+        (worker) => initWorker(worker),
+        (error) => {
+          this.reject(new WebRWorkerError(`Worker loading error: ${error.message}`));
+        }
       );
     } else {
       const worker = new Worker(`${config.serviceWorkerUrl}webr-worker.js`);
@@ -3537,7 +3307,7 @@ var ServiceWorkerChannelMain = class extends ChannelMain {
 _syncMessageCache = new WeakMap();
 _registration = new WeakMap();
 _interrupted = new WeakMap();
-_registerServiceWorker = new WeakSet();
+_ServiceWorkerChannelMain_instances = new WeakSet();
 registerServiceWorker_fn = async function(url) {
   __privateSet(this, _registration, await navigator.serviceWorker.register(url));
   await navigator.serviceWorker.ready;
@@ -3558,11 +3328,10 @@ registerServiceWorker_fn = async function(url) {
     this.activeRegistration().postMessage({ type: "register-client-main" });
   });
   navigator.serviceWorker.addEventListener("message", (event) => {
-    void __privateMethod(this, _onMessageFromServiceWorker, onMessageFromServiceWorker_fn).call(this, event);
+    void __privateMethod(this, _ServiceWorkerChannelMain_instances, onMessageFromServiceWorker_fn).call(this, event);
   });
   return clientId;
 };
-_onMessageFromServiceWorker = new WeakSet();
 onMessageFromServiceWorker_fn = async function(event) {
   if (event.data.type === "request") {
     const uuid = event.data.data;
@@ -3598,7 +3367,6 @@ onMessageFromServiceWorker_fn = async function(event) {
     return;
   }
 };
-_handleEventsFromWorker2 = new WeakSet();
 handleEventsFromWorker_fn2 = function(worker) {
   if (IN_NODE) {
     worker.on("message", (message) => {
@@ -3621,127 +3389,20 @@ handleEventsFromWorker_fn2 = function(worker) {
   }
 };
 _onMessageFromWorker2 = new WeakMap();
-var _ep2, _mainThreadId, _location, _lastInterruptReq, _dispatch2, _interrupt2;
-var ServiceWorkerChannelWorker = class {
-  constructor(data) {
-    __privateAdd(this, _ep2, void 0);
-    __privateAdd(this, _mainThreadId, void 0);
-    __privateAdd(this, _location, void 0);
-    __privateAdd(this, _lastInterruptReq, Date.now());
-    __privateAdd(this, _dispatch2, () => 0);
-    __privateAdd(this, _interrupt2, () => {
-      return;
-    });
-    this.onMessageFromMainThread = () => {
-      return;
-    };
-    if (!data.clientId || !data.location) {
-      throw new WebRChannelError("Can't start service worker channel");
-    }
-    __privateSet(this, _mainThreadId, data.clientId);
-    __privateSet(this, _location, data.location);
-    __privateSet(this, _ep2, IN_NODE ? __require("worker_threads").parentPort : globalThis);
-  }
-  resolve() {
-    this.write({ type: "resolve" });
-  }
-  write(msg, transfer2) {
-    __privateGet(this, _ep2).postMessage(msg, transfer2);
-  }
-  writeSystem(msg, transfer2) {
-    __privateGet(this, _ep2).postMessage({ type: "system", data: msg }, transfer2);
-  }
-  syncRequest(message) {
-    const request = newRequest(message);
-    this.write({ type: "sync-request", data: request });
-    let retryCount = 0;
-    for (; ; ) {
-      try {
-        const url = new URL("__wasm__/webr-fetch-request/", __privateGet(this, _location));
-        const xhr = new XMLHttpRequest();
-        xhr.timeout = 6e4;
-        xhr.responseType = "arraybuffer";
-        xhr.open("POST", url, false);
-        const fetchReqBody = {
-          clientId: __privateGet(this, _mainThreadId),
-          uuid: request.data.uuid
-        };
-        xhr.send((0, import_msgpack3.encode)(fetchReqBody));
-        return (0, import_msgpack3.decode)(xhr.response);
-      } catch (e) {
-        if (e instanceof DOMException && retryCount++ < 1e3) {
-          console.log("Service worker request failed - resending request");
-        } else {
-          throw e;
-        }
-      }
-    }
-  }
-  read() {
-    const response = this.syncRequest({ type: "read" });
-    return response.data.resp;
-  }
-  inputOrDispatch() {
-    for (; ; ) {
-      const msg = this.read();
-      if (msg.type === "stdin") {
-        return Module2.allocateUTF8(msg.data);
-      }
-      __privateGet(this, _dispatch2).call(this, msg);
-    }
-  }
-  run(args) {
-    try {
-      Module2.callMain(args);
-    } catch (e) {
-      if (e instanceof WebAssembly.RuntimeError) {
-        this.writeSystem({ type: "console.error", data: e.message });
-        this.writeSystem({
-          type: "console.error",
-          data: "An unrecoverable WebAssembly error has occurred, the webR worker will be closed."
-        });
-        this.writeSystem({ type: "close" });
-      }
-      throw e;
-    }
-  }
-  setInterrupt(interrupt) {
-    __privateSet(this, _interrupt2, interrupt);
-  }
-  handleInterrupt() {
-    if (Date.now() > __privateGet(this, _lastInterruptReq) + 1e3) {
-      __privateSet(this, _lastInterruptReq, Date.now());
-      const response = this.syncRequest({ type: "interrupt" });
-      const interrupted = response.data.resp;
-      if (interrupted) {
-        __privateGet(this, _interrupt2).call(this);
-      }
-    }
-  }
-  setDispatchHandler(dispatch) {
-    __privateSet(this, _dispatch2, dispatch);
-  }
-};
-_ep2 = new WeakMap();
-_mainThreadId = new WeakMap();
-_location = new WeakMap();
-_lastInterruptReq = new WeakMap();
-_dispatch2 = new WeakMap();
-_interrupt2 = new WeakMap();
 
 // webR/chan/channel-postmessage.ts
 if (IN_NODE) {
   globalThis.Worker = __require("worker_threads").Worker;
 }
-var _worker, _handleEventsFromWorker3, handleEventsFromWorker_fn3, _onMessageFromWorker3;
+var _worker, _PostMessageChannelMain_instances, handleEventsFromWorker_fn3, _onMessageFromWorker3;
 var PostMessageChannelMain = class extends ChannelMain {
   constructor(config) {
     super();
-    __privateAdd(this, _handleEventsFromWorker3);
+    __privateAdd(this, _PostMessageChannelMain_instances);
     this.close = () => {
       return;
     };
-    __privateAdd(this, _worker, void 0);
+    __privateAdd(this, _worker);
     __privateAdd(this, _onMessageFromWorker3, async (worker, message) => {
       if (!message || !message.type) {
         return;
@@ -3785,7 +3446,7 @@ var PostMessageChannelMain = class extends ChannelMain {
     ({ resolve: this.resolve, reject: this.reject, promise: this.initialised } = promiseHandles());
     const initWorker = (worker) => {
       __privateSet(this, _worker, worker);
-      __privateMethod(this, _handleEventsFromWorker3, handleEventsFromWorker_fn3).call(this, worker);
+      __privateMethod(this, _PostMessageChannelMain_instances, handleEventsFromWorker_fn3).call(this, worker);
       this.close = () => {
         worker.terminate();
         this.putClosedMessage();
@@ -3799,7 +3460,10 @@ var PostMessageChannelMain = class extends ChannelMain {
     if (isCrossOrigin(config.baseUrl)) {
       newCrossOriginWorker(
         `${config.baseUrl}webr-worker.js`,
-        (worker) => initWorker(worker)
+        (worker) => initWorker(worker),
+        (error) => {
+          this.reject(new WebRWorkerError(`Worker loading error: ${error.message}`));
+        }
       );
     } else {
       const worker = new Worker(`${config.baseUrl}webr-worker.js`);
@@ -3811,7 +3475,7 @@ var PostMessageChannelMain = class extends ChannelMain {
   }
 };
 _worker = new WeakMap();
-_handleEventsFromWorker3 = new WeakSet();
+_PostMessageChannelMain_instances = new WeakSet();
 handleEventsFromWorker_fn3 = function(worker) {
   if (IN_NODE) {
     worker.on("message", (message) => {
@@ -3834,144 +3498,6 @@ handleEventsFromWorker_fn3 = function(worker) {
   }
 };
 _onMessageFromWorker3 = new WeakMap();
-var _ep3, _parked2, _dispatch3, _promptDepth, _asyncREPL;
-var PostMessageChannelWorker = class {
-  constructor() {
-    __privateAdd(this, _ep3, void 0);
-    __privateAdd(this, _parked2, /* @__PURE__ */ new Map());
-    __privateAdd(this, _dispatch3, () => 0);
-    __privateAdd(this, _promptDepth, 0);
-    /*
-     * This is a fallback REPL for webR running in PostMessage mode. The prompt
-     * section of R's R_ReplDLLdo1 returns empty with -1, which allows this
-     * fallback REPL to yield to the event loop with await.
-     *
-     * The drawback of this approach is that nested REPLs do not work, such as
-     * readline, browser or menu. Attempting to use a nested REPL prints an error
-     * to the JS console.
-     *
-     * R/Wasm errors during execution are caught and the REPL is restarted at the
-     * top level. Any other JS errors are re-thrown.
-     */
-    __privateAdd(this, _asyncREPL, async () => {
-      for (; ; ) {
-        try {
-          __privateSet(this, _promptDepth, 0);
-          const msg = await this.request({ type: "read" });
-          if (msg.type === "stdin") {
-            const str = Module.allocateUTF8(msg.data);
-            Module._strcpy(Module._DLLbuf, str);
-            Module.setValue(Module._DLLbufp, Module._DLLbuf, "*");
-            Module._free(str);
-            try {
-              while (Module._R_ReplDLLdo1() > 0)
-                ;
-            } catch (e) {
-              if (e instanceof WebAssembly.Exception) {
-                Module._R_ReplDLLinit();
-                Module._R_ReplDLLdo1();
-              } else {
-                throw e;
-              }
-            }
-          } else {
-            __privateGet(this, _dispatch3).call(this, msg);
-          }
-        } catch (e) {
-          if (e instanceof WebAssembly.RuntimeError) {
-            this.writeSystem({ type: "console.error", data: e.message });
-            this.writeSystem({
-              type: "console.error",
-              data: "An unrecoverable WebAssembly error has occurred, the webR worker will be closed."
-            });
-            this.writeSystem({ type: "close" });
-          }
-          if (!(e instanceof WebAssembly.Exception)) {
-            throw e;
-          }
-        }
-      }
-    });
-    __privateSet(this, _ep3, IN_NODE ? __require("worker_threads").parentPort : globalThis);
-  }
-  resolve() {
-    this.write({ type: "resolve" });
-  }
-  write(msg, transfer2) {
-    __privateGet(this, _ep3).postMessage(msg, transfer2);
-  }
-  writeSystem(msg, transfer2) {
-    __privateGet(this, _ep3).postMessage({ type: "system", data: msg }, transfer2);
-  }
-  read() {
-    throw new WebRChannelError(
-      "Unable to synchronously read when using the `PostMessage` channel."
-    );
-  }
-  inputOrDispatch() {
-    if (__privateGet(this, _promptDepth) > 0) {
-      __privateSet(this, _promptDepth, 0);
-      const msg = Module.allocateUTF8OnStack(
-        "Can't block for input when using the PostMessage communication channel."
-      );
-      Module._Rf_error(msg);
-    }
-    __privateWrapper(this, _promptDepth)._++;
-    return 0;
-  }
-  run(_args) {
-    const args = _args || [];
-    args.unshift("R");
-    const argc = args.length;
-    const argv = Module._malloc(4 * (argc + 1));
-    args.forEach((arg, idx) => {
-      const argvPtr = argv + 4 * idx;
-      const argPtr = Module.allocateUTF8(arg);
-      Module.setValue(argvPtr, argPtr, "*");
-    });
-    this.writeSystem({
-      type: "console.warn",
-      data: "WebR is using `PostMessage` communication channel, nested R REPLs are not available."
-    });
-    Module._Rf_initialize_R(argc, argv);
-    Module._setup_Rmainloop();
-    Module._R_ReplDLLinit();
-    Module._R_ReplDLLdo1();
-    void __privateGet(this, _asyncREPL).call(this);
-  }
-  setDispatchHandler(dispatch) {
-    __privateSet(this, _dispatch3, dispatch);
-  }
-  async request(msg, transferables) {
-    const req = newRequest(msg, transferables);
-    const { resolve, promise: prom } = promiseHandles();
-    __privateGet(this, _parked2).set(req.data.uuid, resolve);
-    this.write(req);
-    return prom;
-  }
-  setInterrupt() {
-    return;
-  }
-  handleInterrupt() {
-    return;
-  }
-  onMessageFromMainThread(message) {
-    const msg = message;
-    const uuid = msg.data.uuid;
-    const resolve = __privateGet(this, _parked2).get(uuid);
-    if (resolve) {
-      __privateGet(this, _parked2).delete(uuid);
-      resolve(msg.data.resp);
-    } else {
-      console.warn("Can't find request.");
-    }
-  }
-};
-_ep3 = new WeakMap();
-_parked2 = new WeakMap();
-_dispatch3 = new WeakMap();
-_promptDepth = new WeakMap();
-_asyncREPL = new WeakMap();
 
 // webR/chan/channel-common.ts
 var ChannelType = {
@@ -4001,7 +3527,7 @@ function newChannelMain(data) {
 // webR/config.ts
 var BASE_URL = IN_NODE ? __dirname + "/" : "https://conjoint-ly.github.io/webr/";
 var PKG_BASE_URL = "https://repo.r-wasm.org";
-var WEBR_VERSION = "0.4.3-dev";
+var WEBR_VERSION = "0.5.1-dev";
 
 // webR/robj-main.ts
 function isRObject2(value) {
@@ -4155,7 +3681,7 @@ function newRClassProxy(chan, shelter, objType) {
 }
 
 // webR/console.ts
-var _stdout, _stderr, _prompt, _canvasImage, _canvasNewPage, _defaultStdout, _defaultStderr, _defaultPrompt, _defaultCanvasImage, _defaultCanvasNewPage, _run, run_fn;
+var _stdout, _stderr, _prompt, _canvasImage, _canvasNewPage, _defaultStdout, _defaultStderr, _defaultPrompt, _defaultCanvasImage, _defaultCanvasNewPage, _Console_instances, run_fn;
 var Console = class {
   /**
    * @param {ConsoleCallbacks} callbacks A list of webR Console callbacks to
@@ -4170,26 +3696,17 @@ var Console = class {
       R_ENABLE_JIT: "0"
     }
   }) {
-    /*
-     * Start the asynchronous infinite loop
-     *
-     * This loop waits for output from webR and dispatches callbacks based on the
-     * message received.
-     *
-     * The promise returned by this asynchronous function resolves only once the
-     * webR communication channel has closed.
-     */
-    __privateAdd(this, _run);
+    __privateAdd(this, _Console_instances);
     /** Called when webR outputs to ``stdout`` */
-    __privateAdd(this, _stdout, void 0);
+    __privateAdd(this, _stdout);
     /** Called when webR outputs to ``stderr`` */
-    __privateAdd(this, _stderr, void 0);
+    __privateAdd(this, _stderr);
     /** Called when webR prompts for input */
-    __privateAdd(this, _prompt, void 0);
+    __privateAdd(this, _prompt);
     /** Called when webR writes to the HTML canvas element */
-    __privateAdd(this, _canvasImage, void 0);
+    __privateAdd(this, _canvasImage);
     /** Called when webR creates a new plot */
-    __privateAdd(this, _canvasNewPage, void 0);
+    __privateAdd(this, _canvasNewPage);
     /**
      * The default function called when webR outputs to ``stdout``
      * @param {string} text The line sent to stdout by webR.
@@ -4210,8 +3727,7 @@ var Console = class {
      */
     __privateAdd(this, _defaultPrompt, (text) => {
       const input = prompt(text);
-      if (input)
-        this.stdin(`${input}
+      if (input) this.stdin(`${input}
 `);
     });
     /**
@@ -4263,7 +3779,7 @@ var Console = class {
    * Start the webR console
    */
   run() {
-    void __privateMethod(this, _run, run_fn).call(this);
+    void __privateMethod(this, _Console_instances, run_fn).call(this);
   }
 };
 _stdout = new WeakMap();
@@ -4276,7 +3792,7 @@ _defaultStderr = new WeakMap();
 _defaultPrompt = new WeakMap();
 _defaultCanvasImage = new WeakMap();
 _defaultCanvasNewPage = new WeakMap();
-_run = new WeakSet();
+_Console_instances = new WeakSet();
 run_fn = async function() {
   for (; ; ) {
     const output = await this.webR.read();
@@ -4324,14 +3840,19 @@ var defaultOptions = {
   channelType: ChannelType.Automatic,
   createLazyFilesystem: true
 };
-var _chan, _initialised, _handleSystemMessages, handleSystemMessages_fn;
+var _chan, _initialised, _WebR_instances, handleSystemMessages_fn;
 var WebR = class {
   constructor(options = {}) {
-    __privateAdd(this, _handleSystemMessages);
-    __privateAdd(this, _chan, void 0);
-    __privateAdd(this, _initialised, void 0);
+    __privateAdd(this, _WebR_instances);
+    __privateAdd(this, _chan);
+    __privateAdd(this, _initialised);
     this.version = WEBR_VERSION;
     this.FS = {
+      analyzePath: async (path, dontResolveLastLink) => {
+        const msg = { type: "analyzePath", data: { path, dontResolveLastLink } };
+        const payload = await __privateGet(this, _chan).request(msg);
+        return payload.obj;
+      },
       lookupPath: async (path) => {
         const msg = { type: "lookupPath", data: { path } };
         const payload = await __privateGet(this, _chan).request(msg);
@@ -4378,6 +3899,10 @@ var WebR = class {
         const msg = { type: "readFile", data: { path, flags } };
         const payload = await __privateGet(this, _chan).request(msg);
         return payload.obj;
+      },
+      rename: async (oldpath, newpath) => {
+        const msg = { type: "rename", data: { oldpath, newpath } };
+        await __privateGet(this, _chan).request(msg);
       },
       rmdir: async (path) => {
         const msg = { type: "rmdir", data: { path } };
@@ -4431,7 +3956,7 @@ var WebR = class {
         false: await this.RObject.getPersistentObject("false"),
         na: await this.RObject.getPersistentObject("na")
       };
-      void __privateMethod(this, _handleSystemMessages, handleSystemMessages_fn).call(this);
+      void __privateMethod(this, _WebR_instances, handleSystemMessages_fn).call(this);
     }));
   }
   /**
@@ -4455,6 +3980,19 @@ var WebR = class {
    */
   async read() {
     return await __privateGet(this, _chan).read();
+  }
+  /**
+   * Stream output messages from the communication channel via an async generator.
+   * @yields {Promise<Message>} Output messages from the communication channel.
+   */
+  async *stream() {
+    for (; ; ) {
+      const output = await __privateGet(this, _chan).read();
+      if (output.type === "closed") {
+        return;
+      }
+      yield output;
+    }
   }
   /**
    * Flush the output queue in the communication channel and return all output
@@ -4553,7 +4091,7 @@ var WebR = class {
 };
 _chan = new WeakMap();
 _initialised = new WeakMap();
-_handleSystemMessages = new WeakSet();
+_WebR_instances = new WeakSet();
 handleSystemMessages_fn = async function() {
   for (; ; ) {
     const msg = await __privateGet(this, _chan).readSystem();
@@ -4590,7 +4128,7 @@ var Shelter = class {
   /** @internal */
   constructor(chan) {
     __privateAdd(this, _id, "");
-    __privateAdd(this, _chan2, void 0);
+    __privateAdd(this, _chan2);
     __privateAdd(this, _initialised2, false);
     __privateSet(this, _chan2, chan);
   }

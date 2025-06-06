@@ -6,12 +6,14 @@
   var __getOwnPropNames = Object.getOwnPropertyNames;
   var __getProtoOf = Object.getPrototypeOf;
   var __hasOwnProp = Object.prototype.hasOwnProperty;
+  var __typeError = (msg) => {
+    throw TypeError(msg);
+  };
   var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require : typeof Proxy !== "undefined" ? new Proxy(x, {
     get: (a, b) => (typeof require !== "undefined" ? require : a)[b]
   }) : x)(function(x) {
-    if (typeof require !== "undefined")
-      return require.apply(this, arguments);
-    throw new Error('Dynamic require of "' + x + '" is not supported');
+    if (typeof require !== "undefined") return require.apply(this, arguments);
+    throw Error('Dynamic require of "' + x + '" is not supported');
   });
   var __commonJS = (cb, mod) => function __require2() {
     return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
@@ -32,23 +34,10 @@
     isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
     mod
   ));
-  var __accessCheck = (obj, member, msg) => {
-    if (!member.has(obj))
-      throw TypeError("Cannot " + msg);
-  };
-  var __privateGet = (obj, member, getter) => {
-    __accessCheck(obj, member, "read from private field");
-    return getter ? getter.call(obj) : member.get(obj);
-  };
-  var __privateAdd = (obj, member, value) => {
-    if (member.has(obj))
-      throw TypeError("Cannot add the same private member more than once");
-    member instanceof WeakSet ? member.add(obj) : member.set(obj, value);
-  };
-  var __privateMethod = (obj, member, method) => {
-    __accessCheck(obj, member, "access private method");
-    return method;
-  };
+  var __accessCheck = (obj, member, msg) => member.has(obj) || __typeError("Cannot " + msg);
+  var __privateGet = (obj, member, getter) => (__accessCheck(obj, member, "read from private field"), getter ? getter.call(obj) : member.get(obj));
+  var __privateAdd = (obj, member, value) => member.has(obj) ? __typeError("Cannot add the same private member more than once") : member instanceof WeakSet ? member.add(obj) : member.set(obj, value);
+  var __privateMethod = (obj, member, method) => (__accessCheck(obj, member, "access private method"), method);
 
   // node_modules/@msgpack/msgpack/dist/utils/int.js
   var require_int = __commonJS({
@@ -245,15 +234,15 @@
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.DecodeError = void 0;
-      var DecodeError = class extends Error {
+      var DecodeError = class _DecodeError extends Error {
         constructor(message) {
           super(message);
-          const proto = Object.create(DecodeError.prototype);
+          const proto = Object.create(_DecodeError.prototype);
           Object.setPrototypeOf(this, proto);
           Object.defineProperty(this, "name", {
             configurable: true,
             enumerable: false,
-            value: DecodeError.name
+            value: _DecodeError.name
           });
         }
       };
@@ -839,16 +828,15 @@
         }
         find(bytes, inputOffset, byteLength) {
           const records = this.caches[byteLength - 1];
-          FIND_CHUNK:
-            for (const record of records) {
-              const recordBytes = record.bytes;
-              for (let j = 0; j < byteLength; j++) {
-                if (recordBytes[j] !== bytes[inputOffset + j]) {
-                  continue FIND_CHUNK;
-                }
+          FIND_CHUNK: for (const record of records) {
+            const recordBytes = record.bytes;
+            for (let j = 0; j < byteLength; j++) {
+              if (recordBytes[j] !== bytes[inputOffset + j]) {
+                continue FIND_CHUNK;
               }
-              return record.str;
             }
+            return record.str;
+          }
           return null;
         }
         store(bytes, value) {
@@ -1035,92 +1023,16 @@
           }
         }
         doDecodeSync() {
-          DECODE:
-            while (true) {
-              const headByte = this.readHeadByte();
-              let object;
-              if (headByte >= 224) {
-                object = headByte - 256;
-              } else if (headByte < 192) {
-                if (headByte < 128) {
-                  object = headByte;
-                } else if (headByte < 144) {
-                  const size = headByte - 128;
-                  if (size !== 0) {
-                    this.pushMapState(size);
-                    this.complete();
-                    continue DECODE;
-                  } else {
-                    object = {};
-                  }
-                } else if (headByte < 160) {
-                  const size = headByte - 144;
-                  if (size !== 0) {
-                    this.pushArrayState(size);
-                    this.complete();
-                    continue DECODE;
-                  } else {
-                    object = [];
-                  }
-                } else {
-                  const byteLength = headByte - 160;
-                  object = this.decodeUtf8String(byteLength, 0);
-                }
-              } else if (headByte === 192) {
-                object = null;
-              } else if (headByte === 194) {
-                object = false;
-              } else if (headByte === 195) {
-                object = true;
-              } else if (headByte === 202) {
-                object = this.readF32();
-              } else if (headByte === 203) {
-                object = this.readF64();
-              } else if (headByte === 204) {
-                object = this.readU8();
-              } else if (headByte === 205) {
-                object = this.readU16();
-              } else if (headByte === 206) {
-                object = this.readU32();
-              } else if (headByte === 207) {
-                object = this.readU64();
-              } else if (headByte === 208) {
-                object = this.readI8();
-              } else if (headByte === 209) {
-                object = this.readI16();
-              } else if (headByte === 210) {
-                object = this.readI32();
-              } else if (headByte === 211) {
-                object = this.readI64();
-              } else if (headByte === 217) {
-                const byteLength = this.lookU8();
-                object = this.decodeUtf8String(byteLength, 1);
-              } else if (headByte === 218) {
-                const byteLength = this.lookU16();
-                object = this.decodeUtf8String(byteLength, 2);
-              } else if (headByte === 219) {
-                const byteLength = this.lookU32();
-                object = this.decodeUtf8String(byteLength, 4);
-              } else if (headByte === 220) {
-                const size = this.readU16();
-                if (size !== 0) {
-                  this.pushArrayState(size);
-                  this.complete();
-                  continue DECODE;
-                } else {
-                  object = [];
-                }
-              } else if (headByte === 221) {
-                const size = this.readU32();
-                if (size !== 0) {
-                  this.pushArrayState(size);
-                  this.complete();
-                  continue DECODE;
-                } else {
-                  object = [];
-                }
-              } else if (headByte === 222) {
-                const size = this.readU16();
+          DECODE: while (true) {
+            const headByte = this.readHeadByte();
+            let object;
+            if (headByte >= 224) {
+              object = headByte - 256;
+            } else if (headByte < 192) {
+              if (headByte < 128) {
+                object = headByte;
+              } else if (headByte < 144) {
+                const size = headByte - 128;
                 if (size !== 0) {
                   this.pushMapState(size);
                   this.complete();
@@ -1128,84 +1040,159 @@
                 } else {
                   object = {};
                 }
-              } else if (headByte === 223) {
-                const size = this.readU32();
+              } else if (headByte < 160) {
+                const size = headByte - 144;
                 if (size !== 0) {
-                  this.pushMapState(size);
+                  this.pushArrayState(size);
                   this.complete();
                   continue DECODE;
                 } else {
-                  object = {};
+                  object = [];
                 }
-              } else if (headByte === 196) {
-                const size = this.lookU8();
-                object = this.decodeBinary(size, 1);
-              } else if (headByte === 197) {
-                const size = this.lookU16();
-                object = this.decodeBinary(size, 2);
-              } else if (headByte === 198) {
-                const size = this.lookU32();
-                object = this.decodeBinary(size, 4);
-              } else if (headByte === 212) {
-                object = this.decodeExtension(1, 0);
-              } else if (headByte === 213) {
-                object = this.decodeExtension(2, 0);
-              } else if (headByte === 214) {
-                object = this.decodeExtension(4, 0);
-              } else if (headByte === 215) {
-                object = this.decodeExtension(8, 0);
-              } else if (headByte === 216) {
-                object = this.decodeExtension(16, 0);
-              } else if (headByte === 199) {
-                const size = this.lookU8();
-                object = this.decodeExtension(size, 1);
-              } else if (headByte === 200) {
-                const size = this.lookU16();
-                object = this.decodeExtension(size, 2);
-              } else if (headByte === 201) {
-                const size = this.lookU32();
-                object = this.decodeExtension(size, 4);
               } else {
-                throw new DecodeError_1.DecodeError(`Unrecognized type byte: ${(0, prettyByte_1.prettyByte)(headByte)}`);
+                const byteLength = headByte - 160;
+                object = this.decodeUtf8String(byteLength, 0);
               }
-              this.complete();
-              const stack = this.stack;
-              while (stack.length > 0) {
-                const state = stack[stack.length - 1];
-                if (state.type === 0) {
-                  state.array[state.position] = object;
-                  state.position++;
-                  if (state.position === state.size) {
-                    stack.pop();
-                    object = state.array;
-                  } else {
-                    continue DECODE;
-                  }
-                } else if (state.type === 1) {
-                  if (!isValidMapKeyType(object)) {
-                    throw new DecodeError_1.DecodeError("The type of key must be string or number but " + typeof object);
-                  }
-                  if (object === "__proto__") {
-                    throw new DecodeError_1.DecodeError("The key __proto__ is not allowed");
-                  }
-                  state.key = object;
-                  state.type = 2;
-                  continue DECODE;
+            } else if (headByte === 192) {
+              object = null;
+            } else if (headByte === 194) {
+              object = false;
+            } else if (headByte === 195) {
+              object = true;
+            } else if (headByte === 202) {
+              object = this.readF32();
+            } else if (headByte === 203) {
+              object = this.readF64();
+            } else if (headByte === 204) {
+              object = this.readU8();
+            } else if (headByte === 205) {
+              object = this.readU16();
+            } else if (headByte === 206) {
+              object = this.readU32();
+            } else if (headByte === 207) {
+              object = this.readU64();
+            } else if (headByte === 208) {
+              object = this.readI8();
+            } else if (headByte === 209) {
+              object = this.readI16();
+            } else if (headByte === 210) {
+              object = this.readI32();
+            } else if (headByte === 211) {
+              object = this.readI64();
+            } else if (headByte === 217) {
+              const byteLength = this.lookU8();
+              object = this.decodeUtf8String(byteLength, 1);
+            } else if (headByte === 218) {
+              const byteLength = this.lookU16();
+              object = this.decodeUtf8String(byteLength, 2);
+            } else if (headByte === 219) {
+              const byteLength = this.lookU32();
+              object = this.decodeUtf8String(byteLength, 4);
+            } else if (headByte === 220) {
+              const size = this.readU16();
+              if (size !== 0) {
+                this.pushArrayState(size);
+                this.complete();
+                continue DECODE;
+              } else {
+                object = [];
+              }
+            } else if (headByte === 221) {
+              const size = this.readU32();
+              if (size !== 0) {
+                this.pushArrayState(size);
+                this.complete();
+                continue DECODE;
+              } else {
+                object = [];
+              }
+            } else if (headByte === 222) {
+              const size = this.readU16();
+              if (size !== 0) {
+                this.pushMapState(size);
+                this.complete();
+                continue DECODE;
+              } else {
+                object = {};
+              }
+            } else if (headByte === 223) {
+              const size = this.readU32();
+              if (size !== 0) {
+                this.pushMapState(size);
+                this.complete();
+                continue DECODE;
+              } else {
+                object = {};
+              }
+            } else if (headByte === 196) {
+              const size = this.lookU8();
+              object = this.decodeBinary(size, 1);
+            } else if (headByte === 197) {
+              const size = this.lookU16();
+              object = this.decodeBinary(size, 2);
+            } else if (headByte === 198) {
+              const size = this.lookU32();
+              object = this.decodeBinary(size, 4);
+            } else if (headByte === 212) {
+              object = this.decodeExtension(1, 0);
+            } else if (headByte === 213) {
+              object = this.decodeExtension(2, 0);
+            } else if (headByte === 214) {
+              object = this.decodeExtension(4, 0);
+            } else if (headByte === 215) {
+              object = this.decodeExtension(8, 0);
+            } else if (headByte === 216) {
+              object = this.decodeExtension(16, 0);
+            } else if (headByte === 199) {
+              const size = this.lookU8();
+              object = this.decodeExtension(size, 1);
+            } else if (headByte === 200) {
+              const size = this.lookU16();
+              object = this.decodeExtension(size, 2);
+            } else if (headByte === 201) {
+              const size = this.lookU32();
+              object = this.decodeExtension(size, 4);
+            } else {
+              throw new DecodeError_1.DecodeError(`Unrecognized type byte: ${(0, prettyByte_1.prettyByte)(headByte)}`);
+            }
+            this.complete();
+            const stack = this.stack;
+            while (stack.length > 0) {
+              const state = stack[stack.length - 1];
+              if (state.type === 0) {
+                state.array[state.position] = object;
+                state.position++;
+                if (state.position === state.size) {
+                  stack.pop();
+                  object = state.array;
                 } else {
-                  state.map[state.key] = object;
-                  state.readCount++;
-                  if (state.readCount === state.size) {
-                    stack.pop();
-                    object = state.map;
-                  } else {
-                    state.key = null;
-                    state.type = 1;
-                    continue DECODE;
-                  }
+                  continue DECODE;
+                }
+              } else if (state.type === 1) {
+                if (!isValidMapKeyType(object)) {
+                  throw new DecodeError_1.DecodeError("The type of key must be string or number but " + typeof object);
+                }
+                if (object === "__proto__") {
+                  throw new DecodeError_1.DecodeError("The key __proto__ is not allowed");
+                }
+                state.key = object;
+                state.type = 2;
+                continue DECODE;
+              } else {
+                state.map[state.key] = object;
+                state.readCount++;
+                if (state.readCount === state.size) {
+                  stack.pop();
+                  object = state.map;
+                } else {
+                  state.key = null;
+                  state.type = 1;
+                  continue DECODE;
                 }
               }
-              return object;
             }
+            return object;
+          }
         }
         readHeadByte() {
           if (this.headByte === HEAD_BYTE_REQUIRED) {
@@ -1772,14 +1759,14 @@
       return type;
     }
   };
-  var _slice, slice_fn;
-  var _RObject = class extends RObjectBase {
+  var _RObject_instances, slice_fn;
+  var _RObject = class _RObject extends RObjectBase {
     constructor(data) {
       if (!(data instanceof RObjectBase)) {
         return newObjectFromData(data);
       }
       super(data.ptr);
-      __privateAdd(this, _slice);
+      __privateAdd(this, _RObject_instances);
     }
     static wrap(ptr) {
       const typeNumber = Module._TYPEOF(ptr);
@@ -1857,13 +1844,13 @@
       throw new Error("This R object cannot be converted to JS");
     }
     subset(prop) {
-      return __privateMethod(this, _slice, slice_fn).call(this, prop, objs.bracketSymbol.ptr);
+      return __privateMethod(this, _RObject_instances, slice_fn).call(this, prop, objs.bracketSymbol.ptr);
     }
     get(prop) {
-      return __privateMethod(this, _slice, slice_fn).call(this, prop, objs.bracket2Symbol.ptr);
+      return __privateMethod(this, _RObject_instances, slice_fn).call(this, prop, objs.bracket2Symbol.ptr);
     }
     getDollar(prop) {
-      return __privateMethod(this, _slice, slice_fn).call(this, prop, objs.dollarSymbol.ptr);
+      return __privateMethod(this, _RObject_instances, slice_fn).call(this, prop, objs.dollarSymbol.ptr);
     }
     pluck(...path) {
       const index = protectWithIndex(objs.null);
@@ -1903,8 +1890,7 @@
       return [...props.keys()].filter((i) => typeof obj[i] === "function");
     }
   };
-  var RObject = _RObject;
-  _slice = new WeakSet();
+  _RObject_instances = new WeakSet();
   slice_fn = function(prop, op) {
     const prot = { n: 0 };
     try {
@@ -1917,6 +1903,7 @@
       unprotect(prot.n);
     }
   };
+  var RObject = _RObject;
   var RNull = class extends RObject {
     constructor() {
       super(new RObjectBase(Module.getValue(Module._R_NilValue, "*")));
@@ -1972,7 +1959,7 @@
       return RObject.wrap(Module._INTERNAL(this.ptr));
     }
   };
-  var RPairlist = class extends RObject {
+  var RPairlist = class _RPairlist extends RObject {
     constructor(val) {
       if (val instanceof RObjectBase) {
         assertRType(val, "pairlist");
@@ -1982,7 +1969,7 @@
       const prot = { n: 0 };
       try {
         const { names, values } = toWebRData(val);
-        const list = RPairlist.wrap(Module._Rf_allocList(values.length));
+        const list = _RPairlist.wrap(Module._Rf_allocList(values.length));
         protectInc(list, prot);
         for (let [i, next] = [0, list]; !next.isNull(); [i, next] = [i + 1, next.cdr()]) {
           next.setcar(new RObject(values[i]));
@@ -2057,7 +2044,7 @@
       return RObject.wrap(Module._TAG(this.ptr));
     }
   };
-  var RCall = class extends RObject {
+  var RCall = class _RCall extends RObject {
     constructor(val) {
       if (val instanceof RObjectBase) {
         assertRType(val, "call");
@@ -2068,7 +2055,7 @@
       try {
         const { values } = toWebRData(val);
         const objs2 = values.map((value) => protectInc(new RObject(value), prot));
-        const call = RCall.wrap(Module._Rf_allocVector(RTypeMap.call, values.length));
+        const call = _RCall.wrap(Module._Rf_allocVector(RTypeMap.call, values.length));
         protectInc(call, prot);
         for (let [i, next] = [0, call]; !next.isNull(); [i, next] = [i + 1, next.cdr()]) {
           next.setcar(objs2[i]);
@@ -2109,7 +2096,7 @@
       }
     }
   };
-  var RList = class extends RObject {
+  var RList = class _RList extends RObject {
     constructor(val, names = null) {
       if (val instanceof RObjectBase) {
         assertRType(val, "list");
@@ -2131,7 +2118,7 @@
         protectInc(ptr, prot);
         data.values.forEach((v, i) => {
           if (isSimpleObject(v)) {
-            Module._SET_VECTOR_ELT(ptr, i, new RList(v).ptr);
+            Module._SET_VECTOR_ELT(ptr, i, new _RList(v).ptr);
           } else {
             Module._SET_VECTOR_ELT(ptr, i, new RObject(v).ptr);
           }
@@ -2208,7 +2195,7 @@
       };
     }
   };
-  var RDataFrame = class extends RList {
+  var RDataFrame = class _RDataFrame extends RList {
     constructor(val) {
       if (val instanceof RObjectBase) {
         super(val);
@@ -2217,7 +2204,7 @@
         }
         return this;
       }
-      return RDataFrame.fromObject(val);
+      return _RDataFrame.fromObject(val);
     }
     static fromObject(obj) {
       const { names, values } = toWebRData(obj);
@@ -2242,7 +2229,7 @@
             protectInc(listObj, prot);
             const asDataFrame = new RCall([new RSymbol("as.data.frame"), listObj]);
             protectInc(asDataFrame, prot);
-            return new RDataFrame(asDataFrame.eval());
+            return new _RDataFrame(asDataFrame.eval());
           }
         }
       } finally {
@@ -2278,7 +2265,7 @@
       }
     }
   };
-  var RString = class extends RObject {
+  var _RString = class _RString extends RObject {
     // Unlike symbols, strings are not cached and must thus be protected
     constructor(x) {
       if (x instanceof RObjectBase) {
@@ -2288,13 +2275,18 @@
       }
       const name = Module.allocateUTF8(x);
       try {
-        super(new RObjectBase(Module._Rf_mkChar(name)));
+        super(new RObjectBase(Module._Rf_mkCharCE(name, _RString.CEType.CE_UTF8)));
       } finally {
         Module._free(name);
       }
     }
     toString() {
-      return Module.UTF8ToString(Module._R_CHAR(this.ptr));
+      const vmax = Module._vmaxget();
+      try {
+        return Module.UTF8ToString(Module._Rf_translateCharUTF8(this.ptr));
+      } finally {
+        Module._vmaxset(vmax);
+      }
     }
     toJs() {
       return {
@@ -2303,6 +2295,15 @@
       };
     }
   };
+  _RString.CEType = {
+    CE_NATIVE: 0,
+    CE_UTF8: 1,
+    CE_LATIN1: 2,
+    CE_BYTES: 3,
+    CE_SYMBOL: 5,
+    CE_ANY: 99
+  };
+  var RString = _RString;
   var REnvironment = class extends RObject {
     constructor(val = {}) {
       if (val instanceof RObjectBase) {
@@ -2462,7 +2463,7 @@
     }
   };
   var _newSetter;
-  var _RLogical = class extends RVectorAtomic {
+  var _RLogical = class _RLogical extends RVectorAtomic {
     constructor(val) {
       super(val, "logical", __privateGet(_RLogical, _newSetter));
     }
@@ -2492,17 +2493,17 @@
       return this.detectMissing().map((m, idx) => m ? null : Boolean(arr[idx]));
     }
   };
-  var RLogical = _RLogical;
   _newSetter = new WeakMap();
-  __privateAdd(RLogical, _newSetter, (ptr) => {
+  __privateAdd(_RLogical, _newSetter, (ptr) => {
     const data = Module._LOGICAL(ptr);
     const naLogical = Module.getValue(Module._R_NaInt, "i32");
     return (v, i) => {
       Module.setValue(data + 4 * i, v === null ? naLogical : Boolean(v), "i32");
     };
   });
+  var RLogical = _RLogical;
   var _newSetter2;
-  var _RInteger = class extends RVectorAtomic {
+  var _RInteger = class _RInteger extends RVectorAtomic {
     constructor(val) {
       super(val, "integer", __privateGet(_RInteger, _newSetter2));
     }
@@ -2528,17 +2529,17 @@
       );
     }
   };
-  var RInteger = _RInteger;
   _newSetter2 = new WeakMap();
-  __privateAdd(RInteger, _newSetter2, (ptr) => {
+  __privateAdd(_RInteger, _newSetter2, (ptr) => {
     const data = Module._INTEGER(ptr);
     const naInteger = Module.getValue(Module._R_NaInt, "i32");
     return (v, i) => {
       Module.setValue(data + 4 * i, v === null ? naInteger : Math.round(Number(v)), "i32");
     };
   });
+  var RInteger = _RInteger;
   var _newSetter3;
-  var _RDouble = class extends RVectorAtomic {
+  var _RDouble = class _RDouble extends RVectorAtomic {
     constructor(val) {
       super(val, "double", __privateGet(_RDouble, _newSetter3));
     }
@@ -2561,17 +2562,17 @@
       );
     }
   };
-  var RDouble = _RDouble;
   _newSetter3 = new WeakMap();
-  __privateAdd(RDouble, _newSetter3, (ptr) => {
+  __privateAdd(_RDouble, _newSetter3, (ptr) => {
     const data = Module._REAL(ptr);
     const naDouble = Module.getValue(Module._R_NaReal, "double");
     return (v, i) => {
       Module.setValue(data + 8 * i, v === null ? naDouble : v, "double");
     };
   });
+  var RDouble = _RDouble;
   var _newSetter4;
-  var _RComplex = class extends RVectorAtomic {
+  var _RComplex = class _RComplex extends RVectorAtomic {
     constructor(val) {
       super(val, "complex", __privateGet(_RComplex, _newSetter4));
     }
@@ -2603,9 +2604,8 @@
       );
     }
   };
-  var RComplex = _RComplex;
   _newSetter4 = new WeakMap();
-  __privateAdd(RComplex, _newSetter4, (ptr) => {
+  __privateAdd(_RComplex, _newSetter4, (ptr) => {
     const data = Module._COMPLEX(ptr);
     const naDouble = Module.getValue(Module._R_NaReal, "double");
     return (v, i) => {
@@ -2613,8 +2613,9 @@
       Module.setValue(data + 8 * (2 * i + 1), v === null ? naDouble : v.im, "double");
     };
   });
+  var RComplex = _RComplex;
   var _newSetter5;
-  var _RCharacter = class extends RVectorAtomic {
+  var _RCharacter = class _RCharacter extends RVectorAtomic {
     constructor(val) {
       super(val, "character", __privateGet(_RCharacter, _newSetter5));
     }
@@ -2640,14 +2641,20 @@
       );
     }
     toArray() {
-      return this.detectMissing().map(
-        (m, idx) => m ? null : Module.UTF8ToString(Module._R_CHAR(Module._STRING_ELT(this.ptr, idx)))
-      );
+      const vmax = Module._vmaxget();
+      try {
+        return this.detectMissing().map(
+          (m, idx) => m ? null : Module.UTF8ToString(
+            Module._Rf_translateCharUTF8(Module._STRING_ELT(this.ptr, idx))
+          )
+        );
+      } finally {
+        Module._vmaxset(vmax);
+      }
     }
   };
-  var RCharacter = _RCharacter;
   _newSetter5 = new WeakMap();
-  __privateAdd(RCharacter, _newSetter5, (ptr) => {
+  __privateAdd(_RCharacter, _newSetter5, (ptr) => {
     return (v, i) => {
       if (v === null) {
         Module._SET_STRING_ELT(ptr, i, objs.naString.ptr);
@@ -2656,8 +2663,9 @@
       }
     };
   });
+  var RCharacter = _RCharacter;
   var _newSetter6;
-  var _RRaw = class extends RVectorAtomic {
+  var _RRaw = class _RRaw extends RVectorAtomic {
     constructor(val) {
       if (val instanceof ArrayBuffer) {
         val = new Uint8Array(val);
@@ -2683,14 +2691,14 @@
       );
     }
   };
-  var RRaw = _RRaw;
   _newSetter6 = new WeakMap();
-  __privateAdd(RRaw, _newSetter6, (ptr) => {
+  __privateAdd(_RRaw, _newSetter6, (ptr) => {
     const data = Module._RAW(ptr);
     return (v, i) => {
       Module.setValue(data + i, Number(v), "i8");
     };
   });
+  var RRaw = _RRaw;
   function toWebRData(jsObj) {
     if (isWebRDataJs(jsObj)) {
       return jsObj;
